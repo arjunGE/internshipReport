@@ -1,0 +1,408 @@
+\documentclass{article}
+\input{macros}
+
+\title{Internship Report from Summer 2021 at GE Research}
+\author{Arjun Viswanathan}
+
+\date{\today}
+\begin{document}
+
+\maketitle
+
+\section{Cost Models}
+	\label{sec:costmodel}
+	MBAS (model-based architectural synthesis) 
+	looks at the following:
+	\begin{enumerate}
+		\item AADL model of a system 
+		\item Cyber requirements
+		\item Possible attacks 
+		\item Possible defenses 
+		\item Implemented defenses 
+		\item Cost model for defenses
+	\end{enumerate}
+	and is able to do the following:
+	\begin{enumerate}
+		\item Determine whether the cyber
+		requirements are satisfied by the
+		implemented defenses, ie, if the 
+		attacks are successfully mitigated.
+		\item Suggest a minimal-cost defense 
+		strategy, that would satisfy  the 
+		requirements. 
+	\end{enumerate}
+	The cost model specifies the cost of 
+	implementing a defense. The only 
+	restriction placed on the cost model
+	is that the cost model is monotonically
+	increasing with the DAL score for a 
+	component-defense pair --- for DAL scores
+	$\delta_i$ and $\delta_j$ such that 
+	$\delta_i < \delta_j$, the cost of 
+	implementing defense $d$ in component
+	$s$ to $\delta_i$ is less than or 
+	equal to the cost of implementing it 
+	to $delta_j$. The following work was
+	done regarding cost models:
+	\begin{enumerate}
+		\item The current cost model for the 
+		delivery drone system assigned the cost 
+		of implementing any defense to some 
+		DAL score $\delta$ as just $\delta$.
+		We came up with a more realistic cost 
+		model with more interesting costs for 
+		the component-defense pairs after
+		doing some research about the 
+		components and the defenses.
+		\item We introduced a methodology to 
+		come up with these costs by separating 
+		costs into aspects such as effort and 
+		time and aggregating these scores.
+		\item These values are entered into 
+		a CSV file, and we created a 
+		translator from the CSV file to the 
+		XML format of the cost model input to
+		synthesis.
+		\item Even though we have tried to 
+		reason about the right costs to 
+		be assigned to defenses, since a 
+		security expert might do a better 
+		job of this, we have generalized 
+		this process enough, where the security
+		expert need only fill in the values
+		in the CSV, and our translator would
+		create the cost model from these
+		values.
+	\end{enumerate}
+
+\section{Formalizing Synthesis}
+	The current Synthesis implementation, as
+	described in~\ref{sec:costmodel} hadn't 
+	been clearly formalized in a paper. There 
+	were 3 highly incomplete papers, which 
+	didn't fully describe how Synthesis 
+	worked. We accomplished the following goals
+	to the end of formalizing the current 
+	Synthesis implementation:
+	\begin{enumerate}
+		\item We described our attack-defense
+		trees (ADTrees) using their formalism 
+		in the security literature.
+		This allows us to use all the advances
+		made in the area of ADTrees
+		and also clearly describe what we are
+		able to achieve, and what we are not.
+		\item We described the algorithm used 
+		to convert an AADL component model to 
+		an ADTree. This entailed formalizing 
+		the (CSV) output given by STEM (as a 
+		relation).
+		\item We describe how we evaluate these 
+		ADTrees to see whether 
+		they satisfy the requirements, as an 
+		inductive function.
+		\item We describe how we encode ADTrees
+		as MaxSMT queries. 
+		\item We describe how we interpret the 
+		response from the SMT solver as a 
+		defense implementation.
+		\item We came up with a running example of 
+		an house alarm system to demonstrate the 
+		point to a generic audience.
+		\item We also added the example of a 
+		simple drone system to keep it 
+		domain-specific.
+	\end{enumerate}
+
+\section{Synthesis Implementation}
+	While formalizing the Synthesis implementation,
+	we differentiated two instances of the 
+	problem --- Synthesis with and without 
+	dependent attacks. A dependent attack is 
+	one which is dependent on the implementation 
+	of a defense. In the dependent attacks, 
+	Synthesis would need to propose defenses for 
+	possible attacks, plus defenses for attacks 
+	dependent on these defenses. And it should 
+	be able to do this to a fixpoint. According
+	to the current STEM rules, this is only 
+	possible up to one iteration. That is, none
+	of the defenses that mitigate dependent 
+	attacks have attacks dependent on them. In 
+	fact, only two current defenses have dependent
+	attacks. The following was achieved under the 
+	implementation front.
+	\begin{enumerate}
+		\item We identified the limits of the 
+		current dependent attacks as mentioned 
+		above.
+		\item It wasn't clear whether dependent 
+		attacks were currently implemented or not.
+		The incomplete papers mentioned them, the 
+		code had mentions of them, but running 
+		Synthesis showed that it was taking
+		multiple iterations to work sometimes
+		(with dependent attacks, it never would).
+		So we did a combination of exploring the
+		code, commenting it, and testing the current 
+		implementation. We found that dependent 
+		attacks, because of the small number of 
+		them, were hard-coded into the implementation.
+		That is, the ADTrees in the implementation
+		couldn't handle generic dependent attacks,
+		instead, they could deal only with the 
+		particular ones that were described by 
+		the STEM rules. We also found a bug 
+		in the hard-coding of one of the attacks, 
+		which is why the implementation took 
+		multiple iterations on some examples.
+		We fixed the bug, and now the current
+		Synthesis implementation works for the 
+		current list of dependent attacks.
+		\item We tested synthesis for its merit 
+		assignment functionality and for its 
+		ability to choose cheaper defenses. 
+		\begin{itemize}
+			\item DeliveryDroneCase2a demonstrates 
+			merit assignment or Case 2(a) from
+			the problem statement in paper. The 
+			\texttt{fc} and \texttt{positionEstimator}
+			components of the delivery drone can 
+			implement either physicalAccessControl (PAC)
+			or systemAccessControl (SAC). We implement 
+			PAC in both components, and create a cost 
+			model where it costs 700 units to implement 
+			PAC to DAL 7 in both components, 
+			whereas it only costs 7 units to implement
+			SAC in both components. But because SAC is 
+			already implemented, if we use implemented
+			defenses while running synthesis, it will 
+			suggest reducing the DAL of SAC to 7, 
+			but not to remove it and replace it with PAC. 
+			\item DeliveryDroneCostModel illustrates
+			a simple case where Synthesis would pick 
+			the cheaper alternative from different
+			possible defenses that would work. Here,
+			neither SAC nor PAC is implemented for 
+			\texttt{fc} and \texttt{positionEstimator}.
+			If we make one of them more expensive than
+			the other in the cost model, Synthesis will
+			pick the cheaper one to implement. The 
+			two test case cost models are commented 
+			out in the cost model file.
+		\end{itemize}
+		\item We noted the difference between 
+		the implementation and the formalism, 
+		which might be an important thing to 
+		defend in top conferences. This difference
+		is elaborated in the following subsection.
+	\end{enumerate}
+
+	\subsection{ADTrees in Formalism vs Implementation}
+	We stick to recursive functions on regular 
+	ADTrees in the formalism for previously
+	mentioned reasons. 
+	\begin{figure}[t]
+		\scalebox{0.75}{\pstree[levelsep=2.5cm,treesep=0.4cm]
+		{\NodeA{$\anda$}}{
+		\pstree[levelsep=2.5cm,treesep=0.4cm]
+		{\NodeA{$\ba$\\(CAPEC\\137)}}{
+			\pstree[levelsep=2.5cm,treesep=0.4cm]
+			{\NodeBC{$\bd$(Dev\\Auth)}}{
+				\pstree[levelsep=2.5cm,treesep=0.4cm]
+				{\NodeAC{$\ba$\\(CAPEC\\114)}}{
+					\NodeBC{$\bd$(Static\\Code\\Analysis)}
+				}
+			}
+		}}}
+		\hspace{1cm}
+		\scalebox{0.75}{\pstree[levelsep=2.5cm,treesep=0.4cm]
+		{\NodeA{\texttt{ADOr}}}{
+			\pstree[levelsep=2.5cm,treesep=0.4cm]
+			{\NNodeA{n1}{\texttt{ADAnd}}}{
+				\pstree[levelsep=2.5cm,treesep=0.4cm]
+				{\NNodeA{n2}{\texttt{ADNot}}}{
+					\NodeBC{Static\\Code\\Analysis}
+				}
+				\NodeA{CAPEC\\114}
+				\pstree[levelsep=2.5cm,treesep=0.4cm]
+				{\NNodeA{n3}{\texttt{ADOr}}}{
+					\NodeBC{\texttt{DC}:\\c.Atkble,\\DevAuth,\\ 1}
+				}
+			}
+			\pstree[levelsep=2.5cm,treesep=0.4cm]
+			{\NNodeA{n4}{\texttt{ADAnd}}}{
+				\pstree[levelsep=2.5cm,treesep=0.4cm]
+				{\NNodeA{n5}{\texttt{ADNot}}}{
+					\NodeBC{Dev\\Auth}}
+				\NNodeA{n6}{CAPEC\\137}
+			}
+		}
+		\Arc{n1}{n2}{n3}
+		\Arc{n4}{n5}{n6}}
+		\caption{Difference between current formalism of 
+		dependent attacks (left) and current 
+		implementation (on the right) for a particular
+		instance. Dev Auth is Device Authentication, 
+		CAPEC-137 is Parameter Injection, CAPEC-114 is
+		Authentication Abuse, DC stands for 
+		DefenseCondition, and c.Atkble represent 
+		an \textit{attackable} of the incoming
+		connection that encapsulate all possible
+		attacks and defenses of it.
+		}
+		\label{fig:dep}
+	\end{figure}
+	The ADTree in the 
+	implementation is slightly different.
+	An ADTree, is split into the following 
+	classes, all defined in 
+	\texttt{attackdefensecollector/adtree/}:
+	\begin{itemize}
+		\item \texttt{ADAnd} corresponds to
+		 $\texttt{AND}^{\texttt{A}}$ nodes.
+		\item \texttt{ADOr} corresponds to
+		$\texttt{OR}^{\texttt{A}}$ nodes.
+		\item \texttt{Attack} corresponds to 
+		$\texttt{b}^{\texttt{A}}$ nodes.
+		\item \texttt{Defense} corresponds to an
+		entire defense tree.
+		\item \texttt{ADNot} is used to represent 
+		Defense nodes as counteracting 
+		attack-nodes. A 
+		$\texttt{C}^{\texttt{A}}(a, D)$ node 
+		from our formalism corresponds 
+		to ADAnd(a, ADNot(D)).
+		\item \texttt{DefenseCondition} is a special
+		node representing dependent attacks.
+		It encapsulates the defense on 
+		which the attack is dependent, 
+		the implemented DAL, and the attacks
+		and defenses applicable to the 
+		incoming connection; it doesn't hold 
+		the dependent attack itself. Instead, 
+		it is And-ed with the dependent attack.
+	\end{itemize}
+	Figure~\ref{fig:dep} shows an instance of 
+	an attack, its defense, an attack
+	dependent on the defense, and finally, 
+	the defense against the dependent attack
+	represented using formalism on the left, 
+	and using the current implementation on 
+	the right.
+	The following table compares the 
+	implementation to the formalism and can be 
+	used as developer documentation to understand
+	the current implementation:
+	\begin{center}
+		\begin{tabular}{| p{3cm} | p{5cm} | p{5cm} |}
+		\hline
+		\textbf{Text} & 
+		\textbf{Implementation} &
+		\textbf{Formalism}\\
+		\hline
+		Entry Point & 
+		\texttt{runMbasSynthesis()} in
+		\texttt{verdict-bundle/App.java/} & \\
+		\hline
+		Defense Model & 
+		\texttt{Defense.csv} output by STEM & 
+		3.1 Defense Models \\
+		\hline
+		AADL Model $\to$ ADTree & 
+		\texttt{Trace()} in 
+		\texttt{SystemModel.java}, called 
+		from \texttt{perform()} in
+		\texttt{AttackDefenseCollector.java} &
+		\texttt{ADTree} algorithm in
+		Section 3.2 ADTree Construction \\
+		\hline
+		ADTree Evaluation & 
+		\texttt{compute()} in 
+		\texttt{ADTree.java}, called 
+		from \texttt{perform()} in
+		\texttt{AttackDefenseCollector.java} & 
+		$M()$ in Section 3.3
+		ADTree Evaluation\\
+		\hline 
+		Cost Model & 
+		Input as \texttt{costModel.xml} & 
+		Defined in in Section 4 ADTree
+		Synthesis \\
+		\hline
+		Global Synthesis Solution & 
+		\texttt{partialSolution = False, 
+			performMeritSolution = False} & 
+		Case 1 in 4.1 Problem Statement \\
+		\hline
+		Use Implemented Defenses that are 
+		Satisfying & 
+		\texttt{partialSolution = True, 
+			performMeritSolution = True} &
+		Case 2(a) in 4.1 Problem Statement \\
+		\hline
+		Use Implemented Defenses that are 
+		Not Satisfying & 
+		\texttt{partialSolution = True, 
+			performMeritSolution = False} &
+		Case 2(b) in 4.1 Problem Statement \\
+		\hline
+		ADTree $\to$ DTree & 
+		\texttt{construct()} in 
+		\texttt{DTreeConstructor.java} & \\ 
+		\hline
+		ADTree/DTree $\to$ SMT query & 
+		\texttt{performSynthesisMultiple()} in
+		\texttt{VerdictSynthesis.java} &
+		$F()$ in Section 4.2 MaxSMT Encoding \\
+		\hline
+		SMT Model Evaluation & 
+		\texttt{performSynthesisMultiple()} in
+		\texttt{VerdictSynthesis.java} & 
+		Section 5 SMT Model Evaluation \\
+		\hline
+		Dependent Attacks & 
+		Hard-coded in 
+		\texttt{DependentRules.java}, 
+		and checked in \texttt{trace()}
+		before building the ADTree & 
+		$\cd$ in the ADTree allows for any 
+		generic set of dependent attacks \\
+		\hline
+		\end{tabular}
+	\end{center}
+
+\section{Future Work}
+	\begin{enumerate}
+		\item Hard-coding of dependent attacks is 
+		extremely limiting. The formalism specifies 
+		ADTrees as being generic enough to accommodate 
+		any dependent attacks, while we are only able
+		to deal with a small set of hard-coded 
+		ones. From the user's point of view, if 
+		there were to be a new attack that was 
+		dependent on a defense, they would have to
+		add to the hard-coded rules, and this is 
+		very undesirable. If true dependent
+		attacks were to be implemented, STEM 
+		would have to change its \texttt{Defense.csv}
+		output. It would have to have an extra 
+		dependent attack column. Currently, each 
+		row specifies a component, its applicable
+		attack, and implemented and applicable 
+		defenses. If the applicable attack was 
+		dependent on a defense, the dependent 
+		attack column would be populated with
+		that defense, and it would be empty
+		otherwise.
+		\item Is MaxSAT good enough to encode our 
+		problem? If it is, we cannot justify using 
+		MaxSMT which is more expressive and has 
+		more computational limitations. Researchers
+		would have an issue with this, both from 
+		the perspective of conference submissions, 
+		and selling the product to formal 
+		methods-savvy clients.
+	\end{enumerate}
+
+\end{document}

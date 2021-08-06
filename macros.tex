@@ -1,0 +1,65 @@
+%!TEX root =  main.tex
+
+% packages
+\usepackage{graphicx}
+\usepackage{xcolor}
+\newcommand\todo[1]{\textcolor{red}{#1}}
+\usepackage{amsfonts, amsmath} 
+
+\newtheorem{prodefinition}{Problem Statement}
+
+\usepackage{tabularx}
+\usepackage{caption}
+\captionsetup[table]{skip=10pt}
+\usepackage{cleveref}
+\newtheorem{Example}{Example}[section]
+
+\usepackage{listings}
+\usepackage[nomargin,inline,draft]{fixme}
+\usepackage{xcolor,colortbl}
+\usepackage{ADT_web}
+\usepackage{algorithm2e}
+\usepackage{algorithmic}
+\usepackage{listings}
+\usepackage{mathtools}
+\usepackage{mdframed}
+\usepackage{siunitx}
+\lstset{
+	basicstyle=\ttfamily,
+	mathescape
+}
+
+\fxusetheme{color}
+\fxsetup{inlineface=\sffamily\slshape}
+\fxsetup{envface=\sffamily\slshape}
+\FXRegisterAuthor{pm}{pme}{PM}
+
+% new command
+\newcommand{\adand}{\land_\textsf{AD}}
+\newcommand{\ador}{\lor_\textsf{AD}}
+\newcommand{\attop}{\textsf{Attack}}
+
+\newcommand{\dand}{\land_\textsf{D}}
+\newcommand{\dor}{\lor_\textsf{D}}
+\newcommand{\defop}{\textsf{Defense}}
+
+\newcommand{\emtt}[1]{\emph{\texttt{#1}}}
+\newcommand{\ba}{\texttt{b}^\texttt{A}}
+\newcommand{\ora}{\texttt{OR}^\texttt{A}}
+\newcommand{\anda}{\texttt{AND}^\texttt{A}}
+\newcommand{\ca}{\texttt{C}^\texttt{A}}
+\newcommand{\cd}{\texttt{C}^\texttt{D}}
+\newcommand{\ord}{\texttt{OR}^\texttt{D}}
+\newcommand{\andd}{\texttt{AND}^\texttt{D}}
+\newcommand{\bd}{\texttt{b}^\texttt{D}}
+\newcommand{\cost}{\mathbb{C}}
+\newcommand{\model}{\mathbb{M}}
+\newcommand{\imodel}{\mathbb{M}_{\mathbb{I}}}
+\newcommand{\amodel}{\mathbb{M}_{\mathbb{A}}}
+\newcommand{\smodel}{\mathbb{M}_{\mathbb{S}}}
+\newcommand{\cursor}{\texttt{cursor}}
+\newcommand{\trace}{\texttt{trace}}
+\newcommand{\child}[1]{\texttt{child#1}}
+\newcommand{\rootn}{\texttt{root}}
+
+\newcommand{\arjun}[1]{\textcolor{red}{#1}}
